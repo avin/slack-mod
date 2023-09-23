@@ -130,7 +130,6 @@ func getWebSocketUrl() (string, error) {
 	for _, item := range data {
 		title, ok := item["title"].(string)
 		if ok && strings.HasSuffix(title, "Slack") {
-			fmt.Println("------", title, "------")
 			webSocketDebuggerUrl, ok := item["webSocketDebuggerUrl"].(string)
 			if ok {
 				return webSocketDebuggerUrl, nil
@@ -190,8 +189,6 @@ func main() {
 		fmt.Println("Error launching Slack:", err)
 		return
 	}
-
-	// time.Sleep(5 * time.Second)
 
 	wsUrl, err := waitForWebSocketUrl()
 	if err != nil {
