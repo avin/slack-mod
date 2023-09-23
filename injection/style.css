@@ -20,10 +20,6 @@
     display: none;
 }
 
-.p-view_contents--sidebar {
-    margin: 0 -8px;
-}
-
 .p-theme_background {
     background: #3f103f;
 }
@@ -45,6 +41,22 @@
     grid-template-columns: 56px auto;
 }
 
-.p-ia4_channel_list * {
+.p-channel_sidebar__static_list__item__row_container {
+    padding: 0;
+}
+
+.p-channel_sidebar--iap1 .p-channel_sidebar__section_heading.p-channel_sidebar__section_heading_channels, .p-drag_layer .p-channel_sidebar__section_heading.p-channel_sidebar__section_heading_channels {
+    padding: 0 8px;
+}
+
+.p-channel_sidebar__static_list__item__row_container {
     border-radius: 0 !important;
+}
+
+.p-channel_sidebar__static_list__item__row_container > * {
+    border-radius: 0 !important;
+}
+
+.c-scrollbar__track {
+    width: 4px;
 }
