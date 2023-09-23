@@ -106,7 +106,7 @@ func launchSlack() error {
 		return err
 	}
 
-	cmd := exec.Command("cmd", "/c", "start", slackPath, fmt.Sprintf("--remote-debugging-port=%d", PORT), "--remote-allow-origins=*")
+	cmd := exec.Command("cmd", "/c", "start", slackPath, fmt.Sprintf("--remote-debugging-port=%d", PORT), "--remote-allow-origins=*", "--startup")
 	return cmd.Start()
 }
 
