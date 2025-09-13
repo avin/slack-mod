@@ -1,6 +1,6 @@
 # Slack-Mod
 
-Modify Slack theme
+Inject __JS__ and __CSS__ into the Official Slack Desktop Client. Works as a loader over the standard client.
 
 ## Build
 
