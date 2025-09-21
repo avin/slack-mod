@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,13 +20,27 @@ import (
 )
 
 const (
-	PORT           = 9222
 	scriptFilePath = "./injection/script.js"
 	styleFilePath  = "./injection/style.css"
 	retryInterval  = 1 * time.Second // Интервал между повторными попытками
 	maxRetries     = 30              // Максимальное количество повторных попыток
 
 )
+
+func allocateDebuggingPort() (int, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer listener.Close()
+
+	addr, ok := listener.Addr().(*net.TCPAddr)
+	if !ok {
+		return 0, errors.New("unexpected listener address type")
+	}
+
+	return addr.Port, nil
+}
 
 type Injector struct {
 	script string
@@ -100,18 +115,18 @@ func getSlackPath() (string, error) {
 	return slackPath, nil
 }
 
-func launchSlack() error {
+func launchSlack(port int) error {
 	slackPath, err := getSlackPath()
 	if err != nil {
 		return err
 	}
 
-	cmd := exec.Command("cmd", "/c", "start", slackPath, fmt.Sprintf("--remote-debugging-port=%d", PORT), "--remote-allow-origins=*", "--startup")
+	cmd := exec.Command("cmd", "/c", "start", slackPath, fmt.Sprintf("--remote-debugging-port=%d", port), "--remote-allow-origins=*", "--startup")
 	return cmd.Start()
 }
 
-func getWebSocketUrl() (string, error) {
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/json/list", PORT))
+func getWebSocketUrl(port int) (string, error) {
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/json/list", port))
 	if err != nil {
 		return "", err
 	}
@@ -165,9 +180,9 @@ func readInjection() (string, string, error) {
 	return string(scriptBytes), string(styleBytes), nil
 }
 
-func waitForWebSocketUrl() (string, error) {
+func waitForWebSocketUrl(port int) (string, error) {
 	for retries := 0; retries < maxRetries; retries++ {
-		wsUrl, err := getWebSocketUrl()
+		wsUrl, err := getWebSocketUrl(port)
 		if err == nil && wsUrl != "" {
 			return wsUrl, nil // URL найден, возвращаем его
 		}
@@ -185,12 +200,18 @@ func main() {
 		return
 	}
 
-	if err := launchSlack(); err != nil {
+	port, err := allocateDebuggingPort()
+	if err != nil {
+		fmt.Println("Error allocating debugging port:", err)
+		return
+	}
+
+	if err := launchSlack(port); err != nil {
 		fmt.Println("Error launching Slack:", err)
 		return
 	}
 
-	wsUrl, err := waitForWebSocketUrl()
+	wsUrl, err := waitForWebSocketUrl(port)
 	if err != nil {
 		fmt.Println("Error getting WebSocket URL:", err)
 		return
