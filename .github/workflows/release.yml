@@ -19,8 +19,21 @@ jobs:
             goarch: amd64
             ext: ""
             ldflags: "-s -w"
+          - goos: darwin
+            goarch: arm64
+            ext: ""
+            ldflags: "-s -w"
           - goos: linux
             goarch: amd64
+            ext: ""
+            ldflags: "-s -w"
+          - goos: linux
+            goarch: arm64
+            ext: ""
+            ldflags: "-s -w"
+          - goos: linux
+            goarch: arm
+            goarm: "7"
             ext: ""
             ldflags: "-s -w"
 
@@ -46,9 +59,13 @@ jobs:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
           EXT: ${{ matrix.ext }}
           LDFLAGS: ${{ matrix.ldflags }}
         run: |
+          if [ -n "$GOARM" ]; then
+            export GOARM="$GOARM"
+          fi
           go build -trimpath -ldflags "$LDFLAGS" -o "slack-mod$EXT" ./
 
       - name: Package
@@ -56,8 +73,13 @@ jobs:
           EXT: ${{ matrix.ext }}
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
         run: |
-          ARCHIVE="slack-mod_${GOOS}_${GOARCH}_v${VERSION}.zip"
+          ARCH_TAG="$GOARCH"
+          if [ -n "$GOARM" ]; then
+            ARCH_TAG="${ARCH_TAG}v${GOARM}"
+          fi
+          ARCHIVE="slack-mod_${GOOS}_${ARCH_TAG}_v${VERSION}.zip"
           zip -r "$ARCHIVE" "slack-mod$EXT" injection
           echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
 
