@@ -3,50 +3,91 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'  # Сборка будет запускаться на всех тегах, начинающихся с 'v'
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            ext: .exe
+            ldflags: "-s -w -H=windowsgui"
+          - goos: darwin
+            goarch: amd64
+            ext: ""
+            ldflags: "-s -w"
+          - goos: linux
+            goarch: amd64
+            ext: ""
+            ldflags: "-s -w"
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.17
+          go-version: '1.21'
+
+      - name: Derive version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${VERSION//\//_}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build
-        run: GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -H=windowsgui" -o slack-mod.exe
-
-      - name: Get version
-        id: get_version
-        run: echo "::set-output name=version::$(echo ${GITHUB_REF#refs/tags/v} | tr / _)"
-
-      - name: Archive release
-        run: |
-          zip -r slack-mod.v${{ steps.get_version.outputs.version }}.zip slack-mod.exe injection
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          EXT: ${{ matrix.ext }}
+          LDFLAGS: ${{ matrix.ldflags }}
+        run: |
+          go build -trimpath -ldflags "$LDFLAGS" -o "slack-mod$EXT" ./
 
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
+      - name: Package
+        env:
+          EXT: ${{ matrix.ext }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          ARCHIVE="slack-mod_${GOOS}_${GOARCH}_v${VERSION}.zip"
+          zip -r "$ARCHIVE" "slack-mod$EXT" injection
+          echo "ARCHIVE=$ARCHIVE" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARCHIVE }}
+          path: ${{ env.ARCHIVE }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Derive version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${VERSION//\//_}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: dist
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release v${{ steps.version.outputs.version }}
+          files: dist/**/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./slack-mod.v${{ steps.get_version.outputs.version }}.zip
-          asset_name: slack-mod.v${{ steps.get_version.outputs.version }}.zip
-          asset_content_type: application/zip

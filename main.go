@@ -8,12 +8,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
-	"os/exec"
-	"os/user"
-	"path/filepath"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -77,52 +71,6 @@ func (i *Injector) Inject(ws *websocket.Conn) error {
 		"method": "Runtime.evaluate",
 		"params": map[string]interface{}{"expression": styleInjection},
 	})
-}
-
-func getSlackPath() (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-
-	baseDir := filepath.Join(usr.HomeDir, "AppData", "Local", "slack")
-
-	// Получение списка файлов и папок в базовом каталоге Slack
-	files, err := os.ReadDir(baseDir)
-	if err != nil {
-		return "", err
-	}
-
-	// Фильтрация списка, чтобы оставить только папки, начинающиеся с "app-"
-	appDirs := []string{}
-	for _, file := range files {
-		if file.IsDir() && strings.HasPrefix(file.Name(), "app-") {
-			appDirs = append(appDirs, file.Name())
-		}
-	}
-
-	if len(appDirs) == 0 {
-		return "", fmt.Errorf("no app- directories found in %s", baseDir)
-	}
-
-	// Сортировка папок в порядке убывания версии (предполагая, что версии представлены в виде строк)
-	sort.Slice(appDirs, func(i, j int) bool {
-		return appDirs[i] > appDirs[j] // сортировка в обратном порядке
-	})
-
-	// Формирование полного пути к исполняемому файлу Slack
-	slackPath := filepath.Join(baseDir, appDirs[0], "slack.exe")
-	return slackPath, nil
-}
-
-func launchSlack(port int) error {
-	slackPath, err := getSlackPath()
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command("cmd", "/c", "start", slackPath, fmt.Sprintf("--remote-debugging-port=%d", port), "--remote-allow-origins=*", "--startup")
-	return cmd.Start()
 }
 
 func getWebSocketUrl(port int) (string, error) {
