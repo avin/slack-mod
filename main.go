@@ -15,11 +15,8 @@ import (
 )
 
 const (
-	scriptFilePath = "./injection/script.js"
-	styleFilePath  = "./injection/style.css"
-	retryInterval  = 1 * time.Second // Интервал между повторными попытками
-	maxRetries     = 30              // Максимальное количество повторных попыток
-
+	retryInterval = 1 * time.Second // Интервал между повторными попытками
+	maxRetries    = 30              // Максимальное количество повторных попыток
 )
 
 func allocateDebuggingPort() (int, error) {
@@ -116,12 +113,12 @@ func createWebSocketConnection(url string, onOpen func(ws *websocket.Conn)) (*we
 }
 
 func readInjection() (string, string, error) {
-	scriptBytes, err := ioutil.ReadFile(scriptFilePath)
+	scriptBytes, err := loadInjectionAsset("script.js")
 	if err != nil {
 		return "", "", err
 	}
 
-	styleBytes, err := ioutil.ReadFile(styleFilePath)
+	styleBytes, err := loadInjectionAsset("style.css")
 	if err != nil {
 		return "", "", err
 	}
